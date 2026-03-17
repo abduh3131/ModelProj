@@ -1,0 +1,10 @@
+.claude/
+__pycache__/
+*.pyc
+node_modules/
+package.json
+package-lock.json
+.~lock.*
+*.odt
+Assignment_BatchStream.md
+progressReport_COVIDdata.txt
