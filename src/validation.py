@@ -7,28 +7,27 @@ from monte_carlo import run_monte_carlo
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 
-# Ontario COVID-19 first wave (March-June 2020) from JHU CSSE
-# scaled from Ontario's 14.7M to our 1M model population
+# ontario covid first wave data from JHU CSSE
 ONTARIO_POP = 14_700_000
 MODEL_POP = 1_000_000
 SCALE = MODEL_POP / ONTARIO_POP
 
-# weekly avg new cases in Ontario, March-June 2020
+# weekly avg new cases march-june 2020
 ONTARIO_WEEKLY_NEW_CASES = np.array([
-    1, 3, 9, 25,           # march (early exponential)
-    60, 120, 250, 490,     # march-april (peak growth)
-    640, 550, 480, 400,    # april (plateau)
-    350, 300, 280, 250,    # may (decline)
-    200, 180,              # june
+    1, 3, 9, 25,
+    60, 120, 250, 490,
+    640, 550, 480, 400,
+    350, 300, 280, 250,
+    200, 180,
 ])
 
-# cumulative confirmed cases at key dates
+# cumulative cases at key dates
 ONTARIO_CUMULATIVE = {
     14: 424, 28: 2793, 42: 8961, 56: 15381,
     70: 20546, 84: 26483, 98: 30617, 112: 34016,
 }
 
-# COVID-19 benchmarks for validation
+# covid benchmarks
 BENCHMARKS = {
     "R0_range": (2.0, 3.5),
     "incubation_period_days": (4.0, 7.0),
@@ -38,25 +37,24 @@ BENCHMARKS = {
 
 
 def estimate_r0_from_simulation(results, params):
-    # fit exponential to first 30 days to get growth rate, then R0 = 1 + r * gen_time
+    # fit exponential to first 30 days to get R0
     mean_I = results["mean"][:, :, I].sum(axis=1)
     early_I = mean_I[1:31]
     early_I = early_I[early_I > 0]
     if len(early_I) < 10:
         return 0.0
 
-    # linear regression on log(I) to get growth rate
+    # linear reg on log(I) for growth rate
     t = np.arange(len(early_I))
     coeffs = np.polyfit(t, np.log(early_I + 1), 1)
     growth_rate = coeffs[0]
 
-    # R0 formula
     gen_time = 1.0 / np.mean(params["sigma"]) + 1.0 / np.mean(params["gamma"])
     return 1 + growth_rate * gen_time
 
 
 def estimate_doubling_time(results):
-    # doubling time = ln(2) / growth_rate
+    # ln(2) / growth rate
     mean_I = results["mean"][:, :, I].sum(axis=1)
     early_I = mean_I[1:31]
     early_I = early_I[early_I > 0]
@@ -69,17 +67,17 @@ def estimate_doubling_time(results):
 
 
 def plot_validation_curve_shape(results, scenario_name):
-    # normalized curve shape comparison: simulation vs ontario
+    # sim vs ontario curve comparison
     mean_I = results["mean"][:, :, I].sum(axis=1)
     sim_normalized = mean_I / mean_I.max() if mean_I.max() > 0 else mean_I
 
-    # interpolate ontario weekly data to daily
+    # ontario weekly to daily
     ontario_daily = np.repeat(ONTARIO_WEEKLY_NEW_CASES, 7)[:120]
     ontario_normalized = ontario_daily / ontario_daily.max() if ontario_daily.max() > 0 else ontario_daily
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-    # shape comparison (normalized to peak)
+    # normalized shape
     ax1.plot(np.arange(len(sim_normalized)), sim_normalized,
              label="Simulation (normalized)", color="#e74c3c", linewidth=2)
     ax1.plot(np.arange(len(ontario_normalized)), ontario_normalized,
@@ -90,7 +88,7 @@ def plot_validation_curve_shape(results, scenario_name):
     ax1.legend(fontsize=9)
     ax1.grid(True, alpha=0.3)
 
-    # cumulative comparison (scaled to 1M)
+    # cumulative comparison scaled to 1M
     sim_cumulative = np.cumsum(results["mean"][1:, :, I].sum(axis=1) * np.mean(results["params"]["gamma"]))
     ontario_cum_days = sorted(ONTARIO_CUMULATIVE.keys())
     ontario_cum_vals = [ONTARIO_CUMULATIVE[d] * SCALE for d in ontario_cum_days]
@@ -129,11 +127,11 @@ def run_validation(scenario_results_list):
     print(f"  Doubling time: {doubling:.1f} days (expected {dt_min}-{dt_max}) "
           f"{'PASS' if dt_min <= doubling <= dt_max else 'CHECK'}")
 
-    # generation time
+    # gen time
     gen_time = 1.0 / np.mean(params["sigma"]) + 1.0 / np.mean(params["gamma"])
     print(f"  Generation time: {gen_time:.1f} days (expected 5.0-8.0) PASS")
 
-    # incubation period
+    # incubation
     inc_period = 1.0 / np.mean(params["sigma"])
     ip_min, ip_max = BENCHMARKS["incubation_period_days"]
     print(f"  Incubation period: {inc_period:.1f} days (expected {ip_min}-{ip_max}) "

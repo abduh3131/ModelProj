@@ -11,7 +11,7 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 
 
 def plot_single_scenario(results, scenario_name):
-    # SEIR curves with 90% CI bands for one scenario, split by group
+    # SEIR curves w 90% CI for one scenario
     days = np.arange(results["mean"].shape[0])
     fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=True)
     fig.suptitle(f"SEIR Dynamics - {scenario_name} ({results['num_runs']} Monte Carlo runs)", fontsize=13)
@@ -44,7 +44,7 @@ def plot_single_scenario(results, scenario_name):
 
 
 def plot_scenario_comparison(scenario_results_list):
-    # bar chart comparing total infections across all 6 scenarios
+    # bar chart total infections all scenarios
     comparison = compute_scenario_comparison(scenario_results_list)
     names = list(comparison.keys())
     means = [comparison[n]["mean_total_infected"] for n in names]
@@ -60,7 +60,6 @@ def plot_scenario_comparison(scenario_results_list):
     ax.set_title("Intervention Scenario Comparison (Monte Carlo, 14-day detection delay)", fontsize=12)
     ax.grid(True, axis="y", alpha=0.3)
 
-    # value labels on bars
     for bar, val in zip(bars, means):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(stds)*0.3,
                 f"{val:,.0f}", ha="center", va="bottom", fontsize=9)
@@ -71,7 +70,7 @@ def plot_scenario_comparison(scenario_results_list):
 
 
 def plot_infection_curves_overlay(scenario_results_list):
-    # all 6 infection curves overlaid on one plot
+    # all 6 infection curves on one plot
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = ["#95a5a6", "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
 
@@ -83,7 +82,7 @@ def plot_infection_curves_overlay(scenario_results_list):
         ax.plot(days, mean_I, label=name, color=colors[idx % len(colors)], linewidth=2)
         ax.fill_between(days, lower_I, upper_I, alpha=0.1, color=colors[idx % len(colors)])
 
-    # detection day marker
+    # detection day line
     ax.axvline(x=DEFAULT_DELAY, color="black", linestyle="--", alpha=0.6, linewidth=1.5)
     ax.text(DEFAULT_DELAY + 1.5, ax.get_ylim()[1] * 0.92,
             f"Virus detected\n(day {DEFAULT_DELAY})", fontsize=9, va="top")
@@ -99,7 +98,7 @@ def plot_infection_curves_overlay(scenario_results_list):
 
 
 def plot_group_breakdown(scenario_results_list):
-    # grouped bar chart: infections per age group for each scenario
+    # infections per age group per scenario
     num_scenarios = len(scenario_results_list)
     bar_width = 0.25
     x = np.arange(num_scenarios)
@@ -128,7 +127,7 @@ def plot_group_breakdown(scenario_results_list):
 
 
 def plot_infection_timeline(scenario_results_list):
-    # horizontal bars showing start -> peak -> end per group per scenario
+    # timeline bars showing start peak end per group
     num_groups = len(GROUP_NAMES)
     fig, ax = plt.subplots(figsize=(11, 5))
     y_labels, y_pos = [], []
@@ -150,7 +149,7 @@ def plot_infection_timeline(scenario_results_list):
             pos += 1
         pos += 0.5
 
-    # scenario labels on left
+    # scenario labels
     pos = 0
     for scenario_name, _ in scenario_results_list:
         ax.text(-8, pos + (num_groups - 1)/2, scenario_name,
@@ -171,7 +170,7 @@ def plot_infection_timeline(scenario_results_list):
 
 
 def print_group_detail_table(scenario_results_list):
-    # detailed per-group stats for each scenario
+    # detailed per group stats
     for scenario_name, results in scenario_results_list:
         pop = results["params"]["population"]
         print(f"\n--- {scenario_name} ---")
@@ -206,7 +205,7 @@ def main():
         scenario_results_list.append((name, results))
         print(f"done (mean total infected: {np.mean(results['total_infected_per_run']):,.0f})")
 
-    # generate all plots
+    # plots
     print("\nGenerating plots...")
     for name, results in scenario_results_list:
         plot_single_scenario(results, name)
@@ -236,11 +235,11 @@ def main():
 
     print_group_detail_table(scenario_results_list)
 
-    # additional analysis (severity, R0 sensitivity, detection delay)
+    # extra analysis
     from analysis import run_all_analysis
     run_all_analysis(scenario_results_list)
 
-    # validation against real covid data
+    # validation
     from validation import run_validation
     run_validation(scenario_results_list)
 

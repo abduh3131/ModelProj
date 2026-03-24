@@ -3,30 +3,30 @@ from seir_model import run_simulation
 
 
 def run_monte_carlo(params, num_runs=300, base_seed=42):
-    # runs 300 simulations with different seeds and aggregates stats
+    # runs 300 sims w difft seeds and gets stats
     first_run = run_simulation(params, seed=base_seed)
     num_steps_plus_one = first_run.shape[0]
     num_groups = first_run.shape[1]
 
-    # store all runs: (300 runs, 121 days, 3 groups, 4 compartments)
+    # all runs stored here
     all_runs = np.zeros((num_runs, num_steps_plus_one, num_groups, 4))
     all_runs[0] = first_run
 
     for i in range(1, num_runs):
         all_runs[i] = run_simulation(params, seed=base_seed + i)
 
-    # mean, median, 90% confidence interval across all runs
+    # stats across runs
     mean = np.mean(all_runs, axis=0)
     median = np.median(all_runs, axis=0)
-    ci_lower = np.percentile(all_runs, 5, axis=0)   # 5th percentile
-    ci_upper = np.percentile(all_runs, 95, axis=0)   # 95th percentile
+    ci_lower = np.percentile(all_runs, 5, axis=0)
+    ci_upper = np.percentile(all_runs, 95, axis=0)
 
-    # per-run summary metrics
+    # per run metrics
     total_infected_per_run = np.zeros(num_runs)
     peak_infected_per_run = np.zeros(num_runs)
     peak_day_per_run = np.zeros(num_runs, dtype=int)
 
-    # per-group metrics
+    # per group metrics
     total_infected_per_group = np.zeros((num_runs, num_groups))
     peak_infected_per_group = np.zeros((num_runs, num_groups))
     peak_day_per_group = np.zeros((num_runs, num_groups), dtype=int)
@@ -34,17 +34,17 @@ def run_monte_carlo(params, num_runs=300, base_seed=42):
     infection_end_day_per_group = np.zeros((num_runs, num_groups), dtype=int)
 
     for i in range(num_runs):
-        # total infected = everyone who left susceptible
+        # total infected = ppl who left susceptible
         initial_s = all_runs[i, 0, :, 0].sum()
         final_s = all_runs[i, -1, :, 0].sum()
         total_infected_per_run[i] = initial_s - final_s
 
-        # peak active infections (all groups combined)
+        # peak infections all groups
         total_I_over_time = all_runs[i, :, :, 2].sum(axis=1)
         peak_infected_per_run[i] = total_I_over_time.max()
         peak_day_per_run[i] = total_I_over_time.argmax()
 
-        # same but broken down per group
+        # per group breakdown
         for g in range(num_groups):
             total_infected_per_group[i, g] = all_runs[i, 0, g, 0] - all_runs[i, -1, g, 0]
 
@@ -52,7 +52,7 @@ def run_monte_carlo(params, num_runs=300, base_seed=42):
             peak_infected_per_group[i, g] = I_curve.max()
             peak_day_per_group[i, g] = I_curve.argmax()
 
-            # start/end day using 1% of peak threshold
+            # start/end using 1% of peak threshold
             threshold = I_curve.max() * 0.01
             above = np.where(I_curve > threshold)[0]
             infection_start_day_per_group[i, g] = above[0] if len(above) > 0 else 0
@@ -74,7 +74,7 @@ def run_monte_carlo(params, num_runs=300, base_seed=42):
 
 
 def compute_scenario_comparison(scenario_results_list):
-    # builds comparison table across all 6 scenarios
+    # comparison table for all 6 scenarios
     comparison = {}
     for name, results in scenario_results_list:
         total_pop = results["params"]["population"].sum()

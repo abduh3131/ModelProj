@@ -1,12 +1,12 @@
 import numpy as np
 from seir_model import get_default_params
 
-# 14 day delay before any intervention kicks in
+# 14 day delay before intervention
 DEFAULT_DELAY = 14
 
 
 def _apply_delay(params, start_day=DEFAULT_DELAY):
-    # saves baseline contacts and sets when intervention starts
+    # saves baseline contacts and sets intervention day
     baseline = get_default_params()
     params["baseline_contact_matrix"] = baseline["contact_matrix"].copy()
     params["intervention_start_day"] = start_day
@@ -19,11 +19,11 @@ def no_intervention():
 
 
 def school_closure(start_day=DEFAULT_DELAY):
-    # 70% reduction in children contacts
+    # 70% reduction children contacts
     params = get_default_params()
     params["contact_matrix"][0, :] *= 0.3
     params["contact_matrix"][:, 0] *= 0.3
-    # undo double hit on diagonal, reapply once
+    # fix diagonal double hit
     params["contact_matrix"][0, 0] /= 0.3
     params["contact_matrix"][0, 0] *= 0.3
     _apply_delay(params, start_day)
@@ -31,7 +31,7 @@ def school_closure(start_day=DEFAULT_DELAY):
 
 
 def workplace_restriction(start_day=DEFAULT_DELAY):
-    # 50% reduction in adult contacts
+    # 50% reduction adult contacts
     params = get_default_params()
     params["contact_matrix"][1, :] *= 0.5
     params["contact_matrix"][:, 1] *= 0.5
@@ -42,7 +42,7 @@ def workplace_restriction(start_day=DEFAULT_DELAY):
 
 
 def elderly_isolation(start_day=DEFAULT_DELAY):
-    # 60% reduction in elderly contacts
+    # 60% reduction elderly contacts
     params = get_default_params()
     params["contact_matrix"][2, :] *= 0.4
     params["contact_matrix"][:, 2] *= 0.4
@@ -53,11 +53,10 @@ def elderly_isolation(start_day=DEFAULT_DELAY):
 
 
 def combined_moderate(start_day=DEFAULT_DELAY):
-    # schools -50%, workplaces -30%, elderly -40% all at once
+    # schools -50%, workplaces -30%, elderly -40%
     params = get_default_params()
     cm = params["contact_matrix"].copy()
 
-    # apply each reduction to rows and cols, fix diagonal double-hit
     for idx, factor in [(0, 0.5), (1, 0.7), (2, 0.6)]:
         cm[idx, :] *= factor
         cm[:, idx] *= factor
@@ -70,7 +69,7 @@ def combined_moderate(start_day=DEFAULT_DELAY):
 
 
 def full_lockdown(start_day=DEFAULT_DELAY):
-    # 75% reduction across everything
+    # 75% reduction everything
     params = get_default_params()
     params["contact_matrix"] *= 0.25
     _apply_delay(params, start_day)

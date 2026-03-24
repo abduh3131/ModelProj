@@ -9,16 +9,15 @@ S, E, I, R = 0, 1, 2, 3
 
 
 def get_default_params():
-    # all the disease and simulation parameters
+    # default disease params
     params = {
-        "population": np.array([200_000, 600_000, 200_000]),  # 1M total, split 20/60/20
+        "population": np.array([200_000, 600_000, 200_000]),  # 1M total
         "initial_infected": np.array([5, 15, 5]),
         "initial_exposed": np.array([10, 30, 10]),
-        "sigma": np.array([1/5.2, 1/5.2, 1/5.2]),     # incubation rate (5.2 day incubation)
-        "gamma": np.array([1/7.0, 1/10.0, 1/12.0]),    # recovery rate per group
-        "beta": np.array([0.03, 0.035, 0.04]),          # transmission rate per group
-        # contact matrix from POLYMOD (Mossong et al.)
-        # rows/cols = children, adults, elderly
+        "sigma": np.array([1/5.2, 1/5.2, 1/5.2]),     # incubation rate
+        "gamma": np.array([1/7.0, 1/10.0, 1/12.0]),    # recovery rate
+        "beta": np.array([0.03, 0.035, 0.04]),          # transmission rate
+        # contact matrix from POLYMOD
         "contact_matrix": np.array([
             [10.0,  3.0, 1.5],
             [ 3.0,  8.0, 2.0],
@@ -26,7 +25,7 @@ def get_default_params():
         ]),
         "days": 120,
         "dt": 1.0,
-        "noise_scale": 0.05,  # 5% gaussian noise for monte carlo
+        "noise_scale": 0.05,  # 5% noise for mc
         "intervention_start_day": 0,
         "baseline_contact_matrix": None,
     }
@@ -34,7 +33,7 @@ def get_default_params():
 
 
 def initialize_state(params):
-    # set up starting S, E, I, R for each group
+    # starting S E I R for each group
     num_groups = len(params["population"])
     state = np.zeros((num_groups, 4))
     for g in range(num_groups):
@@ -45,7 +44,7 @@ def initialize_state(params):
 
 
 def step_seir(state, params, rng=None):
-    # one day step of the SEIR model
+    # one day step
     if rng is None:
         rng = np.random.default_rng()
 
@@ -59,7 +58,7 @@ def step_seir(state, params, rng=None):
             continue
         s, e, i, r = state[g]
 
-        # force of infection: sum of contacts with infected people across all groups
+        # force of infection from all groups
         foi = 0.0
         for j in range(num_groups):
             N_j = params["population"][j]
@@ -67,32 +66,32 @@ def step_seir(state, params, rng=None):
                 continue
             foi += params["beta"][g] * params["contact_matrix"][j, g] * state[j, I] / N_j
 
-        # add stochastic noise (gaussian, 5%)
+        # stochastic noise
         noise = max(1.0 + rng.normal(0, params["noise_scale"]), 0.0)
         foi *= noise
 
-        # transitions between compartments
+        # transitions
         new_exposed = min(foi * s * dt, s)
         new_infected = min(params["sigma"][g] * e * dt, e)
         new_recovered = min(params["gamma"][g] * i * dt, i)
 
-        # update S -> E -> I -> R
+        # update compartments
         new_state[g, S] = s - new_exposed
         new_state[g, E] = e + new_exposed - new_infected
         new_state[g, I] = i + new_infected - new_recovered
         new_state[g, R] = r + new_recovered
-        new_state[g] = np.maximum(new_state[g], 0.0)  # no negatives
+        new_state[g] = np.maximum(new_state[g], 0.0)
 
     return new_state
 
 
 def run_simulation(params, seed=None):
-    # runs full 120-day SEIR simulation, handles detection delay
+    # full 120 day sim w detection delay
     rng = np.random.default_rng(seed)
     num_steps = int(params["days"] / params["dt"])
     num_groups = len(params["population"])
 
-    # save both contact matrices for the delay swap
+    # save both contact matrices for delay swap
     intervention_cm = params["contact_matrix"].copy()
     baseline_cm = params.get("baseline_contact_matrix")
     start_day = params.get("intervention_start_day", 0)
@@ -103,7 +102,7 @@ def run_simulation(params, seed=None):
     history[0] = state.copy()
 
     for t in range(1, num_steps + 1):
-        # before detection day = baseline contacts, after = intervention contacts
+        # baseline before detection, intervention after
         if has_delay and t < start_day:
             params["contact_matrix"] = baseline_cm
         else:
