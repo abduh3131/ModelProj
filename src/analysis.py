@@ -9,9 +9,9 @@ from interventions import no_intervention, combined_moderate, full_lockdown, DEF
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 GROUP_COLORS = ["#e74c3c", "#3498db", "#2ecc71"]
 
-# published IFR and hospitalization rates (Levin et al. 2020)
-IFR = np.array([0.0001, 0.005, 0.054])        # children 0.01%, adults 0.5%, elderly 5.4%
-HOSP_RATE = np.array([0.01, 0.05, 0.20])      # children 1%, adults 5%, elderly 20%
+# IFR & hospitalization rates for children, adults, elderly
+IFR = np.array([0.0001, 0.005, 0.054])       
+HOSP_RATE = np.array([0.01, 0.05, 0.20])     
 
 
 def compute_severity(results):
@@ -73,7 +73,7 @@ def plot_severity_comparison(scenario_results_list):
 
 
 def plot_detection_delay_comparison():
-    # tests delays of 0, 7, 14, 21, 28 days for combined and lockdown
+    # tests delays of difft days for combined and lockdown
     delays = [0, 7, 14, 21, 28]
     scenarios_to_test = [("Combined Moderate", combined_moderate), ("Full Lockdown", full_lockdown)]
 
@@ -90,7 +90,7 @@ def plot_detection_delay_comparison():
         ax.errorbar(delays, means, yerr=stds, marker="o", linewidth=2,
                     capsize=5, label=label, color=colors[idx])
 
-    # baseline horizontal line for reference
+    # baseline reference
     params_base, _ = no_intervention()
     results_base = run_monte_carlo(params_base, num_runs=100, base_seed=42)
     ax.axhline(y=np.mean(results_base["total_infected_per_run"]),
@@ -108,7 +108,7 @@ def plot_detection_delay_comparison():
 
 
 def plot_r0_sensitivity():
-    # varies beta by 0.6x to 1.4x to see how R0 changes the curve
+    # R0 variability for plot
     beta_multipliers = [0.6, 0.8, 1.0, 1.2, 1.4]
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = ["#3498db", "#2ecc71", "#95a5a6", "#e74c3c", "#8e44ad"]
@@ -117,7 +117,7 @@ def plot_r0_sensitivity():
         params = get_default_params()
         params["beta"] = params["beta"] * mult
 
-        # approx R0 for label
+      
         approx_r0 = np.mean(params["beta"]) * np.mean(params["contact_matrix"]) / np.mean(params["gamma"])
 
         results = run_monte_carlo(params, num_runs=100, base_seed=42)
@@ -136,7 +136,7 @@ def plot_r0_sensitivity():
 
 
 def plot_monte_carlo_distribution(results, scenario_name):
-    # histogram of total infections across 300 runs
+    # histogram of total infections for 300 runs
     fig, ax = plt.subplots(figsize=(8, 5))
     data = results["total_infected_per_run"]
     ax.hist(data, bins=30, color="#3498db", edgecolor="black", alpha=0.7)
@@ -172,7 +172,7 @@ def print_severity_table(scenario_results_list):
               f"{sev['total_mean_deaths']/total_pop*100:>11.3f}%")
     print("=" * 95)
 
-    # baseline per-group breakdown
+    # baseline per group breakdown
     print("\n  Per-group severity breakdown (No Intervention baseline):")
     print(f"  {'Group':<25} {'Deaths':>10} {'Hospitalizations':>18} {'IFR':>8} {'Hosp Rate':>10}")
     print(f"  {'-'*75}")
